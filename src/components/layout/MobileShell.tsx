@@ -7,14 +7,11 @@ import {
   CalendarDays, 
   Plus, 
   Brain, 
-  Wallet, 
-  Wifi, 
-  Battery, 
-  Signal,
   Moon,
   Sun,
   Dumbbell
 } from "lucide-react";
+
 
 import { QuickAddSheet } from "./QuickAddSheet";
 
@@ -70,32 +67,28 @@ export function MobileShell({
         className="relative w-full max-w-[430px] h-[100vh] sm:h-[880px] bg-white dark:bg-[#141118] sm:rounded-[48px] shadow-2xl sm:ring-1 sm:ring-black/10 overflow-hidden flex flex-col transition-colors duration-300"
       >
         
-        {/* iOS Status Bar */}
+        {/* Top Action Header Bar */}
         <div 
           suppressHydrationWarning
-          className="w-full pt-safe px-7 pt-3 pb-1 flex items-center justify-between z-40 text-[#71556B] dark:text-pink-100 text-xs font-semibold select-none bg-white/80 dark:bg-[#141118]/85 backdrop-blur-md border-b border-gray-100 dark:border-white/5"
+          className="w-full px-5 pt-3 pb-2 flex items-center justify-between z-40 bg-white/80 dark:bg-[#141118]/85 backdrop-blur-md border-b border-gray-100 dark:border-white/5"
         >
-          <div className="flex items-center gap-2" suppressHydrationWarning>
-            <span suppressHydrationWarning>09:41</span>
-            {mounted && (
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                title="Alternar Modo Claro/Escuro"
-                className="p-1 rounded-full bg-gray-100 dark:bg-gray-800 text-amber-500 dark:text-purple-300 hover:scale-110 active:scale-95 transition-all ml-1"
-              >
-                {isDarkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-              </button>
-            )}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold tracking-wider uppercase text-[#766788] dark:text-gray-400">
+              Planner
+            </span>
           </div>
-          
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-black rounded-full hidden sm:block shadow-inner" />
 
-          <div className="flex items-center gap-1.5 opacity-90">
-            <Signal className="w-3.5 h-3.5 fill-current" />
-            <Wifi className="w-3.5 h-3.5" />
-            <Battery className="w-4 h-4" />
-          </div>
+          {mounted && (
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              title="Alternar Modo Claro/Escuro"
+              className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-amber-500 dark:text-purple-300 hover:scale-110 active:scale-95 transition-all"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          )}
         </div>
+
 
         {/* Scrollable Page Content Area */}
         <main className="flex-1 overflow-y-auto no-scrollbar pb-28" suppressHydrationWarning>
