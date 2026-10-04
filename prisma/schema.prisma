@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ActivityIntensity {
+  LIGHT
+  MODERATE
+  HIGH
+}
+
+model User {
+  id          String             @id @default(cuid())
+  email       String             @unique
+  name        String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  activities  PhysicalActivity[]
+  modalities  ActivityModality[]
+  templates   WorkoutTemplate[]
+  exercises   Exercise[]
+  habits      Habit[]
+}
+
+model ActivityModality {
+  id          String             @id @default(cuid())
+  userId      String
+  name        String
+  icon        String?
+  color       String?
+  isActive    Boolean            @default(true)
+  
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  deletedAt   DateTime?
+
+  activities  PhysicalActivity[]
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PhysicalActivity {
+  id          String            @id @default(cuid())
+  userId      String
+  modalityId  String
+  
+  duration    Int
+  intensity   ActivityIntensity
+  notes       String?           @db.Text
+  performedAt DateTime
+
+  templateId  String?
+  template    WorkoutTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  loggedSets  WorkoutLogSet[]
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+
+  modality    ActivityModality  @relation(fields: [modalityId], references: [id])
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([performedAt])
+  @@index([modalityId])
+  @@index([templateId])
+}
+
+model Exercise {
+  id            String             @id @default(cuid())
+  userId        String
+  name          String
+  muscleGroup   String
+  
+  templateItems TemplateExercise[]
+  loggedSets    WorkoutLogSet[]
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WorkoutTemplate {
+  id          String             @id @default(cuid())
+  userId      String
+  name        String
+  isActive    Boolean            @default(true)
+  
+  exercises   TemplateExercise[]
+  activities  PhysicalActivity[]
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TemplateExercise {
+  id          String          @id @default(cuid())
+  templateId  String
+  template    WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  exerciseId  String
+  exercise    Exercise        @relation(fields: [exerciseId], references: [id])
+  
+  order       Int
+  targetSets  Int
+  targetReps  String
+  restTimer   Int?
+
+  @@index([templateId])
+  @@index([exerciseId])
+}
+
+model WorkoutLogSet {
+  id          String           @id @default(cuid())
+  activityId  String
+  activity    PhysicalActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  
+  exerciseId  String
+  exercise    Exercise         @relation(fields: [exerciseId], references: [id])
+  
+  setNumber   Int
+  reps        Int
+  weight      Float
+
+  @@index([activityId])
+  @@index([exerciseId])
+}
+
+model Habit {
+  id          String         @id @default(cuid())
+  userId      String
+  name        String
+  type        String         @default("CUSTOM")
+  isActive    Boolean        @default(true)
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns    HabitCheckIn[]
+
+  @@index([userId])
+}
+
+model HabitCheckIn {
+  id          String   @id @default(cuid())
+  habitId     String
+  date        DateTime
+  value       Int      @default(1)
+
+  createdAt   DateTime @default(now())
+
+  habit       Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@index([habitId])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Patient {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  email        String?
+  phone        String?
+  notes        String?       @db.Text
+  isActive     Boolean       @default(true)
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([userId])
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  userId      String
+  patientId   String
+  
+  date        DateTime
+  startTime   String
+  endTime     String
+  type        String            @default("Psicoterapia Individual")
+  status      AppointmentStatus @default(CONFIRMED)
+  notes       String?           @db.Text
+  price       Float?            @default(200.0)
+  isPaid      Boolean           @default(false)
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  patient     Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([patientId])
+  @@index([date])
+}
+
