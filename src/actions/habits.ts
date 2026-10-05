@@ -37,24 +37,48 @@ export async function getDashboardHabits() {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
+      // Start of current week (Monday)
+      const weekStart = new Date(todayStart);
+      const dayOfWeek = weekStart.getDay();
+      const diffToMonday = weekStart.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      weekStart.setDate(diffToMonday);
+
       const habits = await prisma.habit.findMany({
         where: { userId, isActive: true },
         include: {
           checkIns: {
             where: {
-              date: { gte: todayStart },
+              date: { gte: weekStart },
             },
           },
         },
         orderBy: { createdAt: "asc" },
       });
 
-      return habits.map((h) => ({
-        id: h.id,
-        title: h.name,
-        completedToday: h.checkIns.length > 0,
-        type: h.type,
-      }));
+      return habits.map((h) => {
+        const todayCheckIns = h.checkIns.filter((c) => new Date(c.date) >= todayStart);
+        const todayProgress = todayCheckIns.reduce((sum, c) => sum + c.value, 0);
+        
+        // Count unique check-in days this week
+        const uniqueDaysThisWeek = new Set(
+          h.checkIns.map((c) => new Date(c.date).toDateString())
+        ).size;
+
+        const targetValue = h.targetValue || (h.type === "WATER" ? 2500 : 1);
+        const isCompleted = todayProgress >= targetValue;
+
+        return {
+          id: h.id,
+          title: h.name,
+          type: h.type,
+          targetValue,
+          targetUnit: h.targetUnit || (h.type === "WATER" ? "ml" : "check"),
+          weeklyTargetDays: h.weeklyTargetDays || 5,
+          todayProgress,
+          completedToday: isCompleted,
+          weeklyDaysCount: uniqueDaysThisWeek,
+        };
+      });
     } catch (error) {
       return [];
     }
@@ -120,6 +144,9 @@ export async function logWaterIntake(amountMl: number) {
           userId,
           name: "Beber Água 2.5L",
           type: "WATER",
+          targetValue: 2500,
+          targetUnit: "ml",
+          weeklyTargetDays: 7,
           isActive: true,
         },
       });
@@ -137,5 +164,23 @@ export async function logWaterIntake(amountMl: number) {
     return { success: true };
   } catch (error) {
     return { success: false, error: "Falha ao registrar consumo de água." };
+  }
+}
+
+export async function updateHabitGoal(habitId: string, targetValue: number, weeklyTargetDays?: number) {
+  try {
+    await prisma.habit.update({
+      where: { id: habitId },
+      data: {
+        targetValue,
+        weeklyTargetDays: weeklyTargetDays || undefined,
+      },
+    });
+
+    revalidatePath("/");
+    revalidatePath("/fisico");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "Falha ao atualizar meta do hábito." };
   }
 }

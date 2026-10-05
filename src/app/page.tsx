@@ -17,18 +17,36 @@ import {
   ArrowUpRight,
   Heart,
   Brain,
-  Wallet
+  Wallet,
+  Settings,
+  Dumbbell,
+  Check,
+  Trophy
 } from "lucide-react";
 import Link from "next/link";
 import { getDashboardHabits, toggleHabitCheckIn, logWaterIntake } from "@/actions/habits";
 import { getModalities, getWorkoutTemplates } from "@/actions/physical-activity";
 import { LogActivityBottomSheet } from "@/components/fisico/LogActivityBottomSheet";
+import { ConfigureGoalsModal } from "@/components/habits/ConfigureGoalsModal";
+
+interface HabitItem {
+  id: string;
+  title: string;
+  type: string;
+  targetValue: number;
+  targetUnit: string;
+  weeklyTargetDays: number;
+  todayProgress: number;
+  completedToday: boolean;
+  weeklyDaysCount: number;
+}
 
 export default function TodayDashboard() {
   const [activeTab, setActiveTab] = useState("hoje");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [habits, setHabits] = useState<Array<{ id: string; title: string; completedToday: boolean; type: string }>>([]);
+  const [habits, setHabits] = useState<HabitItem[]>([]);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
   const [modalities, setModalities] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
 
@@ -54,12 +72,12 @@ export default function TodayDashboard() {
 
   const handleQuickAction = async (type: string, data?: any) => {
     if (type === "water") {
-      showToast(`+${data || 250}ml de água registrados! 💧`);
-      await logWaterIntake(Number(data) || 250);
+      const amount = Number(data) || 250;
+      showToast(`+${amount}ml de água registrados! 💧`);
+      await logWaterIntake(amount);
       loadData();
     }
   };
-
 
   const handleToggleHabit = async (id: string, currentStatus: boolean, title: string) => {
     setHabits(prev => prev.map(h => h.id === id ? { ...h, completedToday: !currentStatus } : h));
@@ -70,8 +88,11 @@ export default function TodayDashboard() {
     loadData();
   };
 
-  const completedCount = habits.filter(h => h.completedToday).length;
+  const waterHabit = habits.find(h => h.type === "WATER" || h.title.toLowerCase().includes("água"));
+  const exerciseHabit = habits.find(h => h.type === "PHYSICAL_ACTIVITY" || h.title.toLowerCase().includes("exercício") || h.title.toLowerCase().includes("treino"));
+  const otherHabits = habits.filter(h => h.id !== waterHabit?.id && h.id !== exerciseHabit?.id);
 
+  const completedCount = habits.filter(h => h.completedToday).length;
 
   return (
     <MobileShell 
@@ -89,7 +110,7 @@ export default function TodayDashboard() {
 
       {/* HOJE TAB */}
       {activeTab === "hoje" && (
-        <div className="px-5 pt-4 space-y-6">
+        <div className="px-5 pt-4 space-y-6 pb-24">
           
           {/* iOS Large Title Header */}
           <div className="flex items-start justify-between">
@@ -108,7 +129,7 @@ export default function TodayDashboard() {
             </div>
           </div>
 
-          {/* CARD DE DESTAQUE: ATIVIDADE FÍSICA */}
+          {/* CARD DE DESTAQUE: ATIVIDADE FÍSICA & EVOLUÇÃO */}
           <Link href="/fisico" className="block">
             <div className="p-5 rounded-[24px] bg-gradient-to-br from-[#71556B] via-[#9E6A90] to-[#EF7689] text-white shadow-lg relative overflow-hidden group hover:scale-[1.01] transition-all">
               <div className="flex items-center justify-between mb-3">
@@ -125,83 +146,203 @@ export default function TodayDashboard() {
                 Atividades Físicas & Fichas de Treino
               </p>
               <p className="text-xs text-pink-100">
-                Registre seus treinos em 5 segundos ou acompanhe a evolução gráfica do seu desempenho.
+                Acompanhe gráficos de carga, ritmo e fichas personalizadas.
               </p>
             </div>
           </Link>
 
-          {/* HÁBITOS DO DIA */}
-          <div className="space-y-3">
+          {/* HÁBITOS & METAS */}
+          <div className="space-y-4">
+            
+            {/* Seção Header com Botão Ajustar Metas */}
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-[#71556B] dark:text-pink-100 tracking-tight flex items-center gap-2">
-                <Flame className="w-5 h-5 text-[#EF7689]" />
-                Hábitos do Dia
-              </h2>
-              <span className="text-xs text-[#766788] dark:text-gray-400">
-                {completedCount}/{habits.length} concluídos
-              </span>
+              <div>
+                <h2 className="text-lg font-extrabold text-[#71556B] dark:text-pink-100 tracking-tight flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-[#EF7689]" />
+                  Metas & Hábitos do Dia
+                </h2>
+                <p className="text-xs text-[#766788] dark:text-gray-400">
+                  {completedCount} de {habits.length} metas atingidas hoje
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsGoalsModalOpen(true)}
+                className="text-xs font-bold text-[#EF7689] bg-[#EF7689]/10 hover:bg-[#EF7689]/20 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all active:scale-95"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Ajustar Metas
+              </button>
             </div>
 
-            {habits.length === 0 ? (
-              <div className="p-4 rounded-[20px] bg-white dark:bg-[#1C1822] border border-gray-100 dark:border-gray-800 text-center text-xs text-[#766788] dark:text-gray-400">
-                Nenhum hábito cadastrado no banco de dados.
-              </div>
-            ) : (
-              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-5 px-5">
-                {habits.map((habit) => {
-                  const isExerciseHabit = habit.title.toLowerCase().includes("exercício") || habit.title.toLowerCase().includes("treino");
-
-                  return (
-                    <div
-                      key={habit.id}
-                      className={`min-w-[170px] p-4 rounded-[22px] border transition-all select-none flex flex-col justify-between h-36 relative ${
-                        habit.completedToday
-                          ? "bg-[#FF9B8F]/20 border-[#EF7689] text-[#71556B] dark:text-pink-100"
-                          : "bg-white dark:bg-[#1C1822] border-gray-100 dark:border-gray-800"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div 
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold bg-[#EF7689]"
-                        >
-                          {habit.title.toLowerCase().includes("água") ? <Droplets className="w-5 h-5" /> : <Activity className="w-5 h-5" />}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleHabit(habit.id, habit.completedToday, habit.title)}
-                          title="Marcar/Desmarcar rápido"
-                          className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all ${
-                            habit.completedToday ? "bg-[#EF7689] border-[#EF7689] text-white text-xs font-bold" : "border-gray-300 dark:border-gray-600 text-transparent hover:border-[#EF7689]"
-                          }`}
-                        >
-                          ✓
-                        </button>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-bold line-clamp-1 text-[#71556B] dark:text-pink-100 mb-1">
-                          {habit.title}
-                        </p>
-
-                        {isExerciseHabit && (
-                          <button
-                            type="button"
-                            onClick={() => setIsLogModalOpen(true)}
-                            className="text-[10px] font-extrabold text-[#EF7689] bg-[#EF7689]/10 hover:bg-[#EF7689]/20 px-2.5 py-1 rounded-full flex items-center gap-1 transition-all"
-                          >
-                            + Detalhes p/ Gráfico
-                          </button>
-                        )}
-                      </div>
+            {/* CARD 1: BEBER ÁGUA */}
+            {waterHabit && (
+              <div className="p-4 rounded-[22px] bg-white dark:bg-[#1C1822] border border-gray-100 dark:border-gray-800 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-bold">
+                      <Droplets className="w-5 h-5 fill-cyan-500/20" />
                     </div>
-                  );
-                })}
+                    <div>
+                      <h3 className="text-sm font-extrabold text-[#71556B] dark:text-pink-100">
+                        Hidratação (Água)
+                      </h3>
+                      <p className="text-xs text-[#766788] dark:text-gray-400">
+                        Meta: {(waterHabit.targetValue / 1000).toFixed(1)}L por dia
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-sm font-extrabold text-cyan-600 dark:text-cyan-400">
+                      {waterHabit.todayProgress} / {waterHabit.targetValue} ml
+                    </span>
+                    <p className="text-[10px] font-bold text-gray-400">
+                      {Math.min(100, Math.round((waterHabit.todayProgress / waterHabit.targetValue) * 100))}% concluído
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, (waterHabit.todayProgress / waterHabit.targetValue) * 100)}%` }}
+                  />
+                </div>
+
+                {/* Quick Add Buttons */}
+                <div className="flex items-center justify-between pt-1 gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleQuickAction("water", 250)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 font-extrabold text-xs hover:bg-cyan-100 transition-all border border-cyan-200/50"
+                    >
+                      + 250ml
+                    </button>
+                    <button
+                      onClick={() => handleQuickAction("water", 500)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 font-extrabold text-xs hover:bg-cyan-100 transition-all border border-cyan-200/50"
+                    >
+                      + 500ml
+                    </button>
+                  </div>
+
+                  {waterHabit.completedToday && (
+                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-3 py-1 rounded-full flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 stroke-[3]" /> Meta do Dia OK!
+                    </span>
+                  )}
+                </div>
               </div>
             )}
+
+            {/* CARD 2: EXERCÍCIO / TREINO */}
+            {exerciseHabit && (
+              <div className="p-4 rounded-[22px] bg-white dark:bg-[#1C1822] border border-gray-100 dark:border-gray-800 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#EF7689]/10 text-[#EF7689] flex items-center justify-center font-bold">
+                      <Dumbbell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-[#71556B] dark:text-pink-100">
+                        Exercícios & Treinos
+                      </h3>
+                      <p className="text-xs text-[#766788] dark:text-gray-400">
+                        Meta semanal: {exerciseHabit.weeklyTargetDays} dias por semana
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-sm font-extrabold text-[#EF7689]">
+                      {exerciseHabit.weeklyDaysCount} de {exerciseHabit.weeklyTargetDays} dias
+                    </span>
+                    <p className="text-[10px] font-bold text-gray-400">
+                      nesta semana
+                    </p>
+                  </div>
+                </div>
+
+                {/* Day Dots Indicator */}
+                <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                  {Array.from({ length: exerciseHabit.weeklyTargetDays }).map((_, idx) => {
+                    const isDone = idx < exerciseHabit.weeklyDaysCount;
+                    return (
+                      <div key={idx} className="flex flex-col items-center gap-1">
+                        <div 
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold transition-all ${
+                            isDone 
+                              ? "bg-[#EF7689] text-white shadow-xs" 
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                          }`}
+                        >
+                          {isDone ? "✓" : idx + 1}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    onClick={() => setIsLogModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#EF7689] text-white font-extrabold text-xs shadow-xs hover:bg-[#9E6A90] transition-all flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Registrar Treino Hoje
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleHabit(exerciseHabit.id, exerciseHabit.completedToday, exerciseHabit.title)}
+                    className={`text-xs font-bold px-3 py-1 rounded-full border transition-all ${
+                      exerciseHabit.completedToday
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        : "border-gray-200 dark:border-gray-700 text-gray-500"
+                    }`}
+                  >
+                    {exerciseHabit.completedToday ? "✓ Concluído hoje" : "Marcar feito hoje"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CARD 3: OUTROS HÁBITOS */}
+            {otherHabits.length > 0 && (
+              <div className="p-4 rounded-[22px] bg-white dark:bg-[#1C1822] border border-gray-100 dark:border-gray-800 shadow-xs space-y-3">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#766788] dark:text-gray-400 mb-2">
+                  Outros Hábitos Diários
+                </h3>
+
+                <div className="space-y-2">
+                  {otherHabits.map((habit) => (
+                    <div 
+                      key={habit.id}
+                      onClick={() => handleToggleHabit(habit.id, habit.completedToday, habit.title)}
+                      className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        habit.completedToday
+                          ? "bg-pink-50/50 dark:bg-pink-950/20 border-pink-200 dark:border-pink-900"
+                          : "bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border ${
+                          habit.completedToday ? "bg-[#EF7689] border-[#EF7689] text-white" : "border-gray-300 dark:border-gray-600 text-transparent"
+                        }`}>
+                          ✓
+                        </div>
+                        <span className={`text-xs font-bold ${habit.completedToday ? "line-through text-gray-400" : "text-[#71556B] dark:text-pink-100"}`}>
+                          {habit.title}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
           </div>
-
-
 
           {/* OUTRAS ÁREAS */}
           <div className="space-y-3">
@@ -264,7 +405,7 @@ export default function TodayDashboard() {
         </div>
       )}
 
-      {/* MODAL DE REGISTRO DETALHADO */}
+      {/* MODAL DE REGISTRO DETALHADO DE TREINO */}
       <LogActivityBottomSheet
         isOpen={isLogModalOpen}
         onClose={() => setIsLogModalOpen(false)}
@@ -273,7 +414,16 @@ export default function TodayDashboard() {
         onSuccess={loadData}
       />
 
+      {/* MODAL DE CONFIGURAÇÃO DE METAS */}
+      <ConfigureGoalsModal
+        isOpen={isGoalsModalOpen}
+        onClose={() => setIsGoalsModalOpen(false)}
+        habits={habits}
+        onSuccess={loadData}
+      />
+
     </MobileShell>
   );
 }
+
 

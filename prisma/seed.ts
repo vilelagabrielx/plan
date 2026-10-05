@@ -23,9 +23,9 @@ async function main() {
 
   // 2. Default Habits in Database
   const defaultHabits = [
-    { name: "Exercício / Treino", type: "PHYSICAL_ACTIVITY" },
-    { name: "Beber Água 2.5L", type: "WATER" },
-    { name: "Leitura 15 min", type: "CUSTOM" },
+    { name: "Exercício / Treino", type: "PHYSICAL_ACTIVITY", targetValue: 45, targetUnit: "min", weeklyTargetDays: 4 },
+    { name: "Beber Água 2.5L", type: "WATER", targetValue: 2500, targetUnit: "ml", weeklyTargetDays: 7 },
+    { name: "Leitura 15 min", type: "CUSTOM", targetValue: 15, targetUnit: "min", weeklyTargetDays: 5 },
   ];
 
   for (const h of defaultHabits) {
@@ -38,11 +38,24 @@ async function main() {
           userId: user.id,
           name: h.name,
           type: h.type,
+          targetValue: h.targetValue,
+          targetUnit: h.targetUnit,
+          weeklyTargetDays: h.weeklyTargetDays,
           isActive: true,
+        },
+      });
+    } else {
+      await prisma.habit.update({
+        where: { id: existing.id },
+        data: {
+          targetValue: h.targetValue,
+          targetUnit: h.targetUnit,
+          weeklyTargetDays: h.weeklyTargetDays,
         },
       });
     }
   }
+
 
 
   // 3. Modalities
