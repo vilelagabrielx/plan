@@ -79,7 +79,7 @@ export function FisicoPageClient({
 
   return (
     <MobileShell activeTab="fisico" onTabChange={handleTabChange}>
-      <div className="px-5 pt-4 space-y-6">
+      <div className="px-5 pt-4 space-y-6 pb-24 animate-fade-in">
         
         {/* iOS Large Title Header */}
         <div className="flex items-start justify-between">
